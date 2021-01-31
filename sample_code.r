@@ -305,8 +305,144 @@ mtcars %>% filter(hp>100) %>%
 		   group_by(vs,car2) %>%
            summarize(mean_mpg=mean(mpg), mean_hp=mean(hp), freq=n())
 
+# Dates
+# Base R
+# Date class for dates, starting point is 1970-01-01 which is equals to 0
+origo_day <- as.Date("1970-01-01") 
+class(origo_day)
+as.numeric(origo_day) # Counting starts with 0
+unclass(origo_day)
+as.Date(0, origin="1970-01-01") # only accepts numeric input if origin is given
+as.Date(366, origin="1960-01-01") # if dates are imported into R from other platforms as numeric data e.g., SAS or excel
+?as.Date
+as.Date("1969-12-31") # R can process this properly by default
+as.Date("1970/01/02") # R can process this properly by default
+as.Date("22-08-2001") # R "manages" to convert but the outcome is wrong
+as.Date(x = "22-08-2001", format = "%d-%m-%Y") # strongly advised to pass on the format argument as well
+as.Date("02/29/04", "%m/%d/%y")
+as.Date("22-08-2001", "%m-%d-%Y") # R by default returns NA if it cannot apply the provided format, no error or warning
+as.Date("27dec1985")
+as.Date("27dec1985", optional=F) # error message will be returned, this is the default
+as.Date("27dec1985", optional=T) # NA will be returned, no error or warning
+as.Date("27dec1985","%d%b%Y")
 
-# dates
+date() # system datetime as character
+Sys.time() # system datetime as character
+Sys.Date() # system date as character
+
+weekdays(origo_day)
+weekdays(as.Date(Sys.Date()), abbreviate=T)
+
+months(origo_day)
+months(origo_day, abbreviate=T)
+
+quarters(origo_day+180)
+
+# Datetimes
+# POSIXct: numeric datetime. Counting seconds from 1970-01-01
+ct <- as.POSIXct(Sys.time())
+class(ct)
+unclass(ct)
+unclass(as.POSIXct("1970-01-01 00:00:00", tz="GMT"))
+as.numeric(as.POSIXct("1970-01-01 00:00:01", tz="GMT"))
+weekdays(ct)
+months(ct)
+
+# POSIXlt: stores detailed information in a list
+lt <-as.POSIXlt("2020-06-21 07:53:44")
+weekdays(lt)
+months(lt, abbreviate = TRUE)
+quarters(lt)
+
+unclass(lt)
+names(unclass(lt))
+summary(unclass(lt))
+
+# Referencing list elements of POSIXlt datetimes
+lt$sec
+lt$mon # keep in mind January = 0 to December = 11!
+lt$mon+1
+lt$year # keep in mind it's the number of years since 1900!
+lt$year+1900
+lt$wday # keep in mind Sunday=0 to Saturday=6!
+?DateTimeClasses # you can look up here the value lists of the elements
+
+?strptime # you can check abbreviations for %Y, %y, etc.
+dates_vect1 <- c("January 10, 2012 10:40", "December 9, 2011 9:10")
+lt_vect <- as.POSIXct(strptime(dates_vect1, "%B %d, %Y %H:%M"))
+lt_vect <- strptime(dates_vect1, "%B %d, %Y %H:%M")
+lt_vect$sec
+lt_vect$year+1900
+class(lt_vect)
+
+dates_vect2 <- c("1jan1960", "2jan1960", "31mar1960", "30jul1960")
+strptime(dates_vect2, "%d%b%Y")
+format(strptime(dates_vect2, "%d%b%Y"),"%Y/%m/%d")
+
+Sys.time()
+format(Sys.time(), "%a %b %d %X %Y %Z")
+
+# operations on date/times
+x <- as.Date("2012-01-01")
+y <- strptime("9 Jan 2011 11:34:21", "%d %b %Y %H:%M:%S")
+x-y # will not work
+x <- as.POSIXlt(x)
+x-y
+
+x <- as.Date("2012-03-01"); y <- as.Date("2012-02-28")
+x-y
+
+x <- as.POSIXct("2012-10-25 01:00:00")
+y <- as.POSIXlt("2012-10-25 06:00:00", tz = "GMT")
+y-x
+
+difftime(Sys.time(), y, units = "days")
+difftime(as.Date("2012-10-31"), y, units = "days") # can handle different "date classes"
+difftime(as.Date("2012-02-29"), strptime("9 Jan 2012 11:34:21", "%d %b %Y %H:%M:%S"), units = "weeks")
+
+dates_vect3 <- as.Date(c("1984-12-31", "2012-11-03", "2020-01-04", "1999-06-26"))
+as.Date("2000-01-01")<dates_vect3
+lt_vect
+as.POSIXlt("2012-01-10 10:40") == lt_vect
+as.POSIXlt("2012-01-10 10:40") <= lt_vect
+
+# Importing SAS data formats containing dates
+library(SASxport)
+library(sas7bdat)
+
+test_xpt <- read.xport("C:/Adatok/SAS 9.1.3 Portable/stuff/test1.xpt")
+str(test_xpt)
+names(test_xpt)
+class(test_xpt$EXDTC)
+label(test_xpt) # retrieve the labels of the columns
+SASformat(test_xpt) # retrieve SAS formats on the data
+sum(is.na(test_xpt$EXDTC))
+test_xpt[test_xpt$EXDTC=="",]
+
+test_sas7bdat <- read.sas7bdat("C:/Adatok/SAS 9.1.3 Portable/stuff/test1.sas7bdat", debug=FALSE)
+str(test_sas7bdat)
+test_sas7bdat$EXDT_new <- as.Date(test_sas7bdat$EXDT, origin = "1960-01-01")
+test_sas7bdat$EXDTM_new <- as.POSIXct(test_sas7bdat$EXDTM, tz="GMT", origin = "1960-01-01 00:00:00")
+test_sas7bdat$EXDTM_wrong <- as.POSIXct(test_sas7bdat$EXDTM, origin = "1960-01-01 00:00:00")
+
+test_csv <- read.csv("C:/Adatok/SAS 9.1.3 Portable/stuff/test1.csv")
+test_csv <- read.csv("C:/Adatok/SAS 9.1.3 Portable/stuff/test1.csv", na.strings = "")
+str(test_csv)
+test_csv <- mutate(test_csv,EXDT=as.Date(EXDT,"%d%b%Y"),
+                   EXDTM=as.POSIXct(EXDTM,format="%d%b%Y:%H:%M:%S"))
+
+# SWIRL - interactive learning/practicing
+# https://swirlstats.com/
+install.packages("swirl")
+packageVersion("swirl")
+library(swirl)
+install_from_swirl("R Programming")
+
+
+
+
+
+
 # merge/join/okos megoldás/cbind
 # apply functions
 # regular expressions

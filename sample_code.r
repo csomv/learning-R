@@ -25,6 +25,13 @@ class(logic_vect)
 char_vect <- c("a", "b", "c", 5, TRUE) # all elemnets will be coerced to character
 str(char_vect)
 
+# Empty vector definitions
+vector() # empty vector, with length of 0
+a <- vector(mode = "numeric", length = 5)
+numeric(length=5)
+identical(a, numeric(5))
+vector("character", 5)
+character(5)
 
 # Lists, can store different types of classes within the same list
 list_example <- list(1, c("a","b","c","d"), gold=c(TRUE,F,F,T,F), 1 + 4i)
@@ -305,6 +312,61 @@ mtcars %>% filter(hp>100) %>%
 		   group_by(vs,car2) %>%
            summarize(mean_mpg=mean(mpg), mean_hp=mean(hp), freq=n())
 
+# Merging, joining datasets
+df1 <- data.frame(v1=c(1:9,NA), v2=c(50,60,33,20,NA,89,10,100,46,NA), 
+                  v3=c("A","B","C","D","E",NA,"G","H","I","J"),
+                  var5=c(1001:1010))
+df2 <- data.frame(v1=c(1,1,2,NA,2,10,3,4,5,9,6,10,3,4,11),
+                  v2=c(55,50,60,NA,NA,86,33,20,100,57,34,23,46,20,11),
+                  v3=c("Y","A","Z","W",NA,"U","H","X","L","V",NA,"X","M","Z","K"),
+                  v4=c(101:115))
+
+# base R
+# default key is intersect of the variables of the 2 datasets, if not specified otherwise
+# default is inner join, i.e. records with matching keys are kept only from both datasets
+df3 <- merge(df1,df2) 
+intersect(names(df1),names(df2))
+df3 <- merge(df1, df2, by=c("v1","v2")) # default suffixes added if there are variables with the same name
+df3 <- merge(df1, df2, by=c("v1","v2"), suffixes = c("_df1", "_df2")) # suffixes only used for variables with the same name
+df3 <- merge(df1, df2, by.x="v1", by.y="v1")
+df3 <- merge(df1, df2, by.x="v1", by.y="v1", all=FALSE) # inner join, default
+df3 <- merge(df1, df2, by.x="v1", by.y="v1", all=TRUE) # full join
+df3 <- merge(df1, df2, by.x="v1", by.y="v1", all.x=TRUE) # left join
+df3 <- merge(df1, df2, by.x="v1", by.y="v1", all.y=TRUE) # right join
+df3 <- merge(df1, df2, by=NULL) # Cartesian product
+# list of key values which will be ignored while looking for matching key values
+# incomparable works only on one column keys
+df3 <- merge(df1, df2, by="v1", incomparables=c(NA,1))
+df3 <- merge(df1, df2, by="v3")
+df3 <- merge(df1, df2, by.x="v3", by.y="v3", incomparables=c("A",NA))
+
+# plyr package
+# If dplyr is used in the same R session as well then dplyr needs to be loaded first!
+# Otherwise group_by will not work! Instead of by group results in summarize, overall results will return.
+# If plyr was loaded first then a new session needs to be started to make dplyr work again as expected
+# I would not use it, due to limited options and some unexpected features
+library(plyr)
+join(df1, df2) # default is left join on common variables, if hey is not defined
+join(df1, df2, by=c("v1", "v2")) # key variable names need to match, does not bother variables with the same name
+join(df1, df2, by="v1", type="inner")
+join(df1, df2, by="v1", type="left")
+join(df1, df2, by="v1", type="right")
+# Unexpected feature
+# Full join eliminates columns with the same name from the "y" dataset on the rows from "x" dataset
+join(df1, df2, by="v1", type="full")
+join(df1, df2, by="v1", type="left", match="all")
+join(df1, df2, by="v1", type="left", match="first")
+join(df1, df2, by="v1", type="right", match="first") # error
+join(df1, df2, by="v1", type="inner", match="first") # error
+join(df1, df2, by="v1", type="full", match="first") # to me it does not much make sense what returns
+    
+# Smart solution for lookup tables with one numeric value key
+# It usability is very limited but I think it's very smart
+a <- data.frame(id=c(1,2,3), value=c("walk","sleep","run"))
+b <- data.frame(subj=1:11, id=c(1,2,3,2,3,NA,1,2,3,1,99))
+b$new <- a[b$id, 2]
+b$new <- a[b$id,]$value
+
 # Dates
 # Base R
 # Date class for dates, starting point is 1970-01-01 which is equals to 0
@@ -338,13 +400,21 @@ months(origo_day, abbreviate=T)
 
 quarters(origo_day+180)
 
+
 # Datetimes
+
+# For datetime variables (POSIX classes) OS locale settings matter a lot in R
+Sys.getlocale()
+Sys.getlocale("LC_TIME")
+
 # POSIXct: numeric datetime. Counting seconds from 1970-01-01
 ct <- as.POSIXct(Sys.time())
 class(ct)
 unclass(ct)
 unclass(as.POSIXct("1970-01-01 00:00:00", tz="GMT"))
 as.numeric(as.POSIXct("1970-01-01 00:00:01", tz="GMT"))
+unclass(as.POSIXct("1970-01-01 00:00:00", tz="Europe/Budapest"))
+unclass(as.POSIXct("1970-01-01 00:00:00", tz="CET"))
 weekdays(ct)
 months(ct)
 
@@ -368,16 +438,23 @@ lt$wday # keep in mind Sunday=0 to Saturday=6!
 ?DateTimeClasses # you can look up here the value lists of the elements
 
 ?strptime # you can check abbreviations for %Y, %y, etc.
+# If locale has non-English date/time settings, below will not work properly and
+# will return NA if R cannot do the conversion. R/POSIX expects input data
+# according to local settings!!!
 dates_vect1 <- c("January 10, 2012 10:40", "December 9, 2011 9:10")
-lt_vect <- as.POSIXct(strptime(dates_vect1, "%B %d, %Y %H:%M"))
+lt_vect <- as.POSIXct(strptime(dates_vect1, "%B %d, %Y %H:%M")) # in Hungary 1st fails, 2nd converts
 lt_vect <- strptime(dates_vect1, "%B %d, %Y %H:%M")
 lt_vect$sec
 lt_vect$year+1900
 class(lt_vect)
 
+# Work around, if you do not want to change system setting
+lct <- Sys.getlocale("LC_TIME") # store system locale into a variable
+Sys.setlocale("LC_TIME", "C") # set it to "C" "which is the default for the C language and reflects North-American usage – also known as "POSIX"" from R help ?locales
 dates_vect2 <- c("1jan1960", "2jan1960", "31mar1960", "30jul1960")
 strptime(dates_vect2, "%d%b%Y")
 format(strptime(dates_vect2, "%d%b%Y"),"%Y/%m/%d")
+Sys.setlocale("LC_TIME", lct) # set locale back to system setting
 
 Sys.time()
 format(Sys.time(), "%a %b %d %X %Y %Z")
@@ -392,16 +469,25 @@ x-y
 x <- as.Date("2012-03-01"); y <- as.Date("2012-02-28")
 x-y
 
-x <- as.POSIXct("2012-10-25 01:00:00")
-y <- as.POSIXlt("2012-10-25 06:00:00", tz = "GMT")
+Sys.timezone()
+x <- as.POSIXct("2012-10-25 01:00:00") # if not defined then time zone is taken from OS
+y <- as.POSIXlt("2012-10-25 06:00:00", tz = "GMT") # GMT has no daylight saving time! GMT is GMT all year around
+unclass(y)
 y-x
+
+# List of time zones https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+y <- as.POSIXlt("2012-10-25 06:00:00", tz = "Europe/London")
+unclass(y)
+y-x
+as.numeric(y-x)
 
 difftime(Sys.time(), y, units = "days")
 difftime(as.Date("2012-10-31"), y, units = "days") # can handle different "date classes"
 difftime(as.Date("2012-02-29"), strptime("9 Jan 2012 11:34:21", "%d %b %Y %H:%M:%S"), units = "weeks")
+difftime(x, y, units = "hours")
 
 dates_vect3 <- as.Date(c("1984-12-31", "2012-11-03", "2020-01-04", "1999-06-26"))
-as.Date("2000-01-01")<dates_vect3
+as.Date("2000-01-01") < dates_vect3
 lt_vect
 as.POSIXlt("2012-01-10 10:40") == lt_vect
 as.POSIXlt("2012-01-10 10:40") <= lt_vect
@@ -410,7 +496,7 @@ as.POSIXlt("2012-01-10 10:40") <= lt_vect
 library(SASxport)
 library(sas7bdat)
 
-test_xpt <- read.xport("C:/Adatok/SAS 9.1.3 Portable/stuff/test1.xpt")
+test_xpt <- read.xport("C:/Adatok/prog/stuff/test1.xpt")
 str(test_xpt)
 names(test_xpt)
 class(test_xpt$EXDTC)
@@ -419,17 +505,83 @@ SASformat(test_xpt) # retrieve SAS formats on the data
 sum(is.na(test_xpt$EXDTC))
 test_xpt[test_xpt$EXDTC=="",]
 
-test_sas7bdat <- read.sas7bdat("C:/Adatok/SAS 9.1.3 Portable/stuff/test1.sas7bdat", debug=FALSE)
+test_sas7bdat <- read.sas7bdat("C:/Adatok/prog/stuff/test1.sas7bdat", debug=FALSE)
 str(test_sas7bdat)
 test_sas7bdat$EXDT_new <- as.Date(test_sas7bdat$EXDT, origin = "1960-01-01")
 test_sas7bdat$EXDTM_new <- as.POSIXct(test_sas7bdat$EXDTM, tz="GMT", origin = "1960-01-01 00:00:00")
 test_sas7bdat$EXDTM_wrong <- as.POSIXct(test_sas7bdat$EXDTM, origin = "1960-01-01 00:00:00")
 
-test_csv <- read.csv("C:/Adatok/SAS 9.1.3 Portable/stuff/test1.csv")
-test_csv <- read.csv("C:/Adatok/SAS 9.1.3 Portable/stuff/test1.csv", na.strings = "")
+test_csv <- read.csv("C:/Adatok/prog/stuff/test1.csv")
+test_csv <- read.csv("C:/Adatok/prog/stuff/test1.csv", na.strings = "")
 str(test_csv)
 test_csv <- mutate(test_csv,EXDT=as.Date(EXDT,"%d%b%Y"),
                    EXDTM=as.POSIXct(EXDTM,format="%d%b%Y:%H:%M:%S"))
+
+# lubridate package
+# This package is only guaranteed to work with an "en_US.UTF-8" locale
+library(lubridate)
+help(package = lubridate) # Pull up documentation in R help
+
+this_day <- today()
+year(this_day)
+month(this_day)
+day(this_day)
+wday(this_day) # returns numeric, Sun=1, Mon=2, etc.
+wday(this_day, label = TRUE) # returns with abbreviated name of the day according to locale
+wday(this_day, label = TRUE, locale = "C")
+
+this_moment <- now(tzone="America/New_York")
+hour(this_moment)
+minute(this_moment)
+second(this_moment)
+
+my_date <- ymd("1989-05-17")
+class(my_date)
+ymd("1989 May 17") # no idea how this can work on Hungarian time...
+mdy("March 12, 1975") # no idea how the return value is computed on Hungarian time...
+mdy("March 12, 1975", locale = "C")
+mdy("08/04/2013")
+dmy(25081985)
+ymd("192012") # this will return NA with warning
+ymd("1920-1-2")
+ymd("19200102")
+ymd(19200102)
+
+dt1 <- "2014-08-23 17:23:02"
+ymd_hms(dt1)
+
+hms("03:22:14")
+
+dt2 <- c("2014-05-14", "2014-09-22", "2014-07-11")
+ymd(dt2)
+
+update(this_moment, hours = 8, minutes = 34, seconds = 55)
+this_moment <- update(this_moment, hours = 8, minutes = 34, seconds = 55)
+
+ymd(dt2)+days(2)
+ymd(dt2)+weeks(2)
+class(weeks(2))
+unclass(weeks(2))
+ymd(dt2)-months(6)
+ymd(dt2)-period(6, "months")
+ymd(dt2)+period(num = c(2, 6), units = c("years", "months"))
+
+with_tz(now(), tzone="Europe/London")
+with_tz(now(), tzone="America/Los_Angeles")
+with_tz(now(), tzone="America/New_York")
+
+as.period(interval(start = ymd("2012-10-31"), end = mdy("08/04/2013")))
+as.period(interval(start = ymd("2012-10-31"), end = mdy("08/04/2013")), unit="days")
+a <- as.period(interval(ymd("2012-02-29"), dmy_hms("9 Jan 2012 11:34:21")), unit="days")
+unclass(a)
+a$day/7
+x <- c(ymd_hms("2016-02-01 00:05:15", tz = "Europe/Budapest"), ymd_hms("2018-02-01 00:05:15", tz = "Europe/London"))
+y <- ymd_hms(c("2016-03-01 01:05:55", "2021-02-18 10:50:11"), tz = "America/New_York")
+interval(x, y)
+interval(x, y, tzone = "America/New_York")
+as.period(interval(x, y, tzone = "America/New_York"))
+as.period(interval(x, y))
+as.period(interval(x, y), unit="days")
 
 # SWIRL - interactive learning/practicing
 # https://swirlstats.com/
@@ -437,17 +589,3 @@ install.packages("swirl")
 packageVersion("swirl")
 library(swirl)
 install_from_swirl("R Programming")
-
-
-
-
-
-
-# merge/join/okos megoldÃ¡s/cbind
-# apply functions
-# regular expressions
-# table function
-# proportion calc with mean function and logical vector, each column
-# functions
-# own defined operators
-# SWIRL

@@ -320,25 +320,28 @@ df2 <- data.frame(v1=c(1,1,2,NA,2,10,3,4,5,9,6,10,3,4,11),
                   v2=c(55,50,60,NA,NA,86,33,20,100,57,34,23,46,20,11),
                   v3=c("Y","A","Z","W",NA,"U","H","X","L","V",NA,"X","M","Z","K"),
                   v4=c(101:115))
+df3 <- data.frame(v1=c(1), v99="T")
 
 # base R
 # default key is intersect of the variables of the 2 datasets, if not specified otherwise
 # default is inner join, i.e. records with matching keys are kept only from both datasets
-df3 <- merge(df1,df2) 
+df4 <- merge(df1,df2) 
 intersect(names(df1),names(df2))
-df3 <- merge(df1, df2, by=c("v1","v2")) # default suffixes added if there are variables with the same name
-df3 <- merge(df1, df2, by=c("v1","v2"), suffixes = c("_df1", "_df2")) # suffixes only used for variables with the same name
-df3 <- merge(df1, df2, by.x="v1", by.y="v1")
-df3 <- merge(df1, df2, by.x="v1", by.y="v1", all=FALSE) # inner join, default
-df3 <- merge(df1, df2, by.x="v1", by.y="v1", all=TRUE) # full join
-df3 <- merge(df1, df2, by.x="v1", by.y="v1", all.x=TRUE) # left join
-df3 <- merge(df1, df2, by.x="v1", by.y="v1", all.y=TRUE) # right join
-df3 <- merge(df1, df2, by=NULL) # Cartesian product
+df4 <- merge(df1, df2, by=c("v1","v2")) # default suffixes added if there are variables with the same name
+df4 <- merge(df1, df2, by=c("v1","v2"), suffixes = c("_df1", "_df2")) # suffixes only used for variables with the same name
+df4 <- merge(df1, df2, by.x="v1", by.y="v1")
+df4 <- merge(df1, df2, by.x="v1", by.y="v1", all=FALSE) # inner join, default
+df4 <- merge(df1, df2, by.x="v1", by.y="v1", all=TRUE) # full join
+df4 <- merge(df1, df2, by.x="v1", by.y="v1", all.x=TRUE) # left join
+df4 <- merge(df1, df2, by.x="v1", by.y="v1", all.y=TRUE) # right join
+df4 <- merge(df1, df2, by=NULL) # Cartesian product
 # list of key values which will be ignored while looking for matching key values
 # incomparable works only on one column keys
-df3 <- merge(df1, df2, by="v1", incomparables=c(NA,1))
-df3 <- merge(df1, df2, by="v3")
-df3 <- merge(df1, df2, by.x="v3", by.y="v3", incomparables=c("A",NA))
+df4 <- merge(df1, df2, by="v1", incomparables=c(NA,1))
+df4 <- merge(df1, df2, by="v3")
+df4 <- merge(df1, df2, by.x="v3", by.y="v3", incomparables=c("A",NA))
+
+df4 <- merge(merge(df1, df2, by="v1"), df3, by="v1")
 
 # plyr package
 # If dplyr is used in the same R session as well then dplyr needs to be loaded first!
@@ -346,7 +349,7 @@ df3 <- merge(df1, df2, by.x="v3", by.y="v3", incomparables=c("A",NA))
 # If plyr was loaded first then a new session needs to be started to make dplyr work again as expected
 # I would not use it, due to limited options and some unexpected features
 library(plyr)
-join(df1, df2) # default is left join on common variables, if hey is not defined
+join(df1, df2) # default is left join on common variables, if key is not defined
 join(df1, df2, by=c("v1", "v2")) # key variable names need to match, does not bother variables with the same name
 join(df1, df2, by="v1", type="inner")
 join(df1, df2, by="v1", type="left")
@@ -366,6 +369,29 @@ a <- data.frame(id=c(1,2,3), value=c("walk","sleep","run"))
 b <- data.frame(subj=1:11, id=c(1,2,3,2,3,NA,1,2,3,1,99))
 b$new <- a[b$id, 2]
 b$new <- a[b$id,]$value
+
+
+# Factors
+table(mtcars2$car2)
+unclass(mtcars2$car2) # Shows the corresponding numeric values and levels of the factor variable
+mtcars2$car2=factor(mtcars2$car2, levels = sort(attributes(mtcars2$car2)$levels, decreasing = T)) # Levels argument defines the order of categories
+unclass(mtcars2$car2)
+help1 <- table(mtcars2$car2)
+help2 <- names(help1)[order(-help1)]
+mtcars2 <- mutate(mtcars2, car3=factor(substr(car,1,1), levels=help2))
+test_csv <- mutate(test_csv, daytype=factor(weekdays(EXDT),
+                               levels = c("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"),
+                               labels = c("weekday", "weekday", "weekday", "weekday", "weekday", "weekend", "weekend")),
+							 day=weekdays(EXDT)
+							 
+				  )
+test_csv <- mutate(test_csv, daytype=factor(weekdays(EXDT),
+                               levels = c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"),
+                               labels = c("weekend","weekday", "weekday", "weekday", "weekday", "weekday", "weekend")),
+							 day=weekdays(EXDT)
+							 
+				  )
+
 
 # Dates
 # Base R
@@ -582,6 +608,8 @@ interval(x, y, tzone = "America/New_York")
 as.period(interval(x, y, tzone = "America/New_York"))
 as.period(interval(x, y))
 as.period(interval(x, y), unit="days")
+
+
 
 # SWIRL - interactive learning/practicing
 # https://swirlstats.com/
